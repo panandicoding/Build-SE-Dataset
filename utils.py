@@ -1,11 +1,13 @@
 import os
+import shutil
 
 import numpy as np
-import librosa
+
 
 def get_name_and_ext(path):
     name, ext = os.path.splitext(os.path.basename(path))
     return name, ext
+
 
 def add_noise_for_waveform(s, n, db):
     """
@@ -24,3 +26,10 @@ def add_noise_for_waveform(s, n, db):
     )
     mix = s + alpha * n
     return mix
+
+
+def prepare_empty_dirs(dirs: list):
+    for d in dirs:
+        if d.exists():
+            shutil.rmtree(d.as_posix())
+        d.mkdir(parents=True, exist_ok=False)

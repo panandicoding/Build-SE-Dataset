@@ -1,4 +1,6 @@
-data/
+data/TIMIT/TRAIN
+data/TIMIT/TEST
+
 release*/
 
 # Byte-compiled / optimized / DLL files

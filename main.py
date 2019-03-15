@@ -1,67 +1,15 @@
 import glob
+import json
 import os
 import random
 import shutil
 from pathlib import Path
+import numpy as np
 
 import librosa
 from tqdm import tqdm
 
-from utils import get_name_and_ext, add_noise_for_waveform
-
-
-"""============ Begin Config ============"""
-# 训练集中 wav 文件的数量
-# NUM_OF_TRAIN_WAV_FILES = 400
-NUM_OF_TRAIN_WAV_FILES = 800
-
-# 测试集的 wav 文件的数量（包含训练集中的 wav 文件）
-# NUM_OF_TEST_WAV_FILES = 500
-NUM_OF_TEST_WAV_FILES = 1000
-
-# 用于训练的信噪比集合
-DBS_TRAIN = ["-15", "-10" ,"-5", "0"]
-# DBS_TRAIN = ["-5", "-10"]
-
-# 用于测试的信噪比集合
-DBS_TEST = ["-20", "-17", "-15", "-12", "-10", "-7", "-5", "3", "0", "5", "-3"]
-
-# 用于训练的噪声类型集合
-NOISE_TYPE_TRAIN = ["babble", "destroyerengine", "destroyerops", "factoryfloor1"]
-
-# 用于测试的噪声类型集合
-NOISE_TYPE_TEST = ["babble", "destroyerengine", "destroyerops", "factoryfloor1", "factoryfloor2"]
-"""============ End Config ============"""
-
-
-# DataStore
-DATA_PATH = Path("data")
-CLEAN_DATA_PATH = DATA_PATH / "clean"
-NOISE_DATA_PATH = DATA_PATH / "noise"
-
-# release dir
-RELEASE_DIR = Path("release")
-RELEASE_DIR_FOR_TRAIN_CLEAN = RELEASE_DIR / "train" / "clean"
-RELEASE_DIR_FOR_TRAIN_NOISY = RELEASE_DIR / "train" / "noisy"
-RELEASE_DIR_FOR_TEST_CLEAN = RELEASE_DIR / "test" / "clean"
-RELEASE_DIR_FOR_TEST_NOISY = RELEASE_DIR / "test" / "noisy"
-
-# 清空现有的所有相关目录
-for dir in [RELEASE_DIR_FOR_TRAIN_CLEAN, RELEASE_DIR_FOR_TRAIN_NOISY, RELEASE_DIR_FOR_TEST_CLEAN, RELEASE_DIR_FOR_TEST_NOISY]:
-    if dir.exists():
-        shutil.rmtree(dir.as_posix())
-    dir.mkdir(parents=True, exist_ok=False)
-
-clean_wav_path = librosa.util.find_files(CLEAN_DATA_PATH.as_posix(), ext=["WAV"], recurse=True)
-random.shuffle(clean_wav_path) # select wav file randomly
-train_clean_wav_paths = clean_wav_path[:NUM_OF_TRAIN_WAV_FILES]
-test_clean_wav_paths = clean_wav_path[:NUM_OF_TEST_WAV_FILES]
-
-# noise wav file path
-noise_wav_list = [p for p in glob.glob(NOISE_DATA_PATH.as_posix() + "/*.wav")]
-
-train_noise_wav_paths = [p for p in noise_wav_list if get_name_and_ext(p)[0] in NOISE_TYPE_TRAIN]
-test_noise_wav_paths = [p for p in noise_wav_list if get_name_and_ext(p)[0] in NOISE_TYPE_TEST]
+from utils import get_name_and_ext, add_noise_for_waveform, prepare_empty_dirs
 
 
 def load_wavs(file_paths, sr=16000):
@@ -82,62 +30,122 @@ def load_noises(noise_wav_paths):
         dict: {"babble": [signals]}
     """
     out = {}
-    for noise_path in tqdm(noise_wav_paths, desc="Loading Noises: "):
+    for noise_path in tqdm(noise_wav_paths, desc="Loading noises: "):
         name, _ = get_name_and_ext(noise_path)
         wav, _ = librosa.load(noise_path, sr=16000)
         out[name] = wav
 
     return out
 
+def add_noise_for_wavs(noise_paths, clean_wav_paths, dbs, output_dir):
+    """批量合成带噪语音
 
-def add_noise_for_full_wavs():
-    """
-    为所有 wavs 叠加噪声
+    将 noise_paths 中的噪声文件，按照各种 dbs，分别叠加在 clean_wav_paths 上
+    最终的结果保存至 output_dir/noisy, output_dir/clean
+
+    Args:
+        noise_paths(list): 噪声文件路径
+        clean_wav_paths(list): 纯净语音文件路径
+        dbs(list): 信噪比
+        output_dir(Path): 输出的目录，目录必须存在
+
     Returns:
-    Notes:
-        测试集合是训练集合的父集合
+        store: {
+            "00001_babble_-1": {
+                "clean": clean_y,
+                "noisy": noisy_y
+            },
+            ...
+        }
     """
-    noises_obj = load_noises(test_noise_wav_paths)
-    clean_wavs = load_wavs(test_clean_wav_paths)
+    assert (output_dir / "clean").exists()
+    assert (output_dir / "noisy").exists()
 
-    for num, clean_wav in tqdm(enumerate(clean_wavs), desc="Iteration of all wavs"):
-        for noise_name in noises_obj.keys():
-            for dB in DBS_TEST:
-                output_wav_filename = "{num}_{noise_name}_{dB}.wav".format(
-                    num=str(num + 1).zfill(4),
-                    noise_name=noise_name,
-                    dB=dB
-                )
-                output_clean_p = os.path.join(RELEASE_DIR_FOR_TEST_CLEAN, output_wav_filename)
-                output_noisy_p = os.path.join(RELEASE_DIR_FOR_TEST_NOISY, output_wav_filename)
+    noise_ys_dict = load_noises(noise_paths)
+    clean_ys = load_wavs(clean_wav_paths)
 
-                mix_wav = add_noise_for_waveform(clean_wav, noises_obj[noise_name][:len(clean_wav)], int(dB))
+    store = {}
 
-                assert len(mix_wav) == len(clean_wav)
-                librosa.output.write_wav(output_clean_p, clean_wav, 16000)
-                librosa.output.write_wav(output_noisy_p, mix_wav, 16000)
+    for i, clean_y in tqdm(enumerate(clean_ys, 1), desc="Add noise for clean waveform"):
+        for noise_type in noise_ys_dict.keys():
+            for db in dbs:
+                output_wav_basename_text = f"{str(i).zfill(4)}_{noise_type}_{db}"
+                output_noisy_y_path = os.path.join(output_dir.as_posix(), "noisy", output_wav_basename_text + ".wav")
+                output_clean_y_path = os.path.join(output_dir.as_posix(), "clean", output_wav_basename_text + ".wav")
 
-def release_data():
-    """
-    从测试集合中选出需要的训练集
-    """
-    add_noise_for_full_wavs()
+                noisy_y = add_noise_for_waveform(clean_y, noise_ys_dict[noise_type][:len(clean_y)], int(db))
+                assert len(noisy_y) == len(clean_y)
 
-    paths_of_all_clean_wav = sorted(glob.glob(RELEASE_DIR_FOR_TEST_CLEAN.as_posix() + "/*.wav"))
-    paths_of_all_noisy_wav = sorted(glob.glob(RELEASE_DIR_FOR_TEST_NOISY.as_posix() + "/*.wav"))
+                librosa.output.write_wav(output_clean_y_path, clean_y, 16000)
+                librosa.output.write_wav(output_noisy_y_path, noisy_y, 16000)
 
-    target_fnames = ["{num}_{noise_name}_{dB}".format(
-        num=str(num + 1).zfill(4),
-        noise_name=noise_name,
-        dB=dB
-    ) for num in range(NUM_OF_TRAIN_WAV_FILES) for noise_name in NOISE_TYPE_TRAIN for dB in DBS_TRAIN]
+                store[output_wav_basename_text] = {
+                    "noisy": noisy_y,
+                    "clean": clean_y
+                }
 
-    for clean_wav_path, noisy_wav_path in zip(paths_of_all_clean_wav, paths_of_all_noisy_wav):
-        fname, _ = get_name_and_ext(clean_wav_path)
-        if fname in target_fnames:
+    return store
+
+
+def main(config):
+    data_dir = Path("data")
+    timit_data_dir = data_dir / "TIMIT"  # 存放着 TIMIT 语料库
+    noisex92_data_dir = data_dir / "NoiseX92"  # 存放着 NoiseX-92 噪声语料库
+    release_dir = Path(config["release_dir"])
+    release_dir_for_test = release_dir / "test"
+    release_dir_for_train = release_dir / "train"
+
+    prepare_empty_dirs([
+        release_dir_for_train / "noisy",
+        release_dir_for_train / "clean",
+        release_dir_for_test / "noisy",
+        release_dir_for_test / "clean",
+    ])
+
+    # Classification of TIMIT for train and test
+    noisex92_wav_paths_list = [p for p in glob.glob(noisex92_data_dir.as_posix() + "/*.wav")]
+    timit_wav_paths = librosa.util.find_files(timit_data_dir.as_posix(), ext=["WAV"], recurse=True)
+    random.shuffle(timit_wav_paths)  # select wav file randomly
+
+    test_clean_wav_paths = timit_wav_paths[:config["test"]["num_of_utterance"]]
+    test_noise_paths = [p for p in noisex92_wav_paths_list if get_name_and_ext(p)[0] in config["test"]["noise_types"]]
+    test_store = add_noise_for_wavs(  # Build test dataset
+        noise_paths=test_noise_paths,
+        clean_wav_paths=test_clean_wav_paths,
+        dbs=config["test"]["dbs"],
+        output_dir=release_dir_for_test
+    )
+
+    paths_of_test_clean_wav = sorted(glob.glob((release_dir_for_test / "clean").as_posix() + "/*.wav"))
+    paths_of_test_noisy_wav = sorted(glob.glob((release_dir_for_test / "noisy").as_posix() + "/*.wav"))
+
+    print("Build test dataset finish.")
+    print("Select train dataset from test dataset...")
+
+    # select train from test database
+    train_basename_texts = []
+    for i in range(config["train"]["num_of_utterance"]):
+        for noisy_type in config["train"]["noise_types"]:
+            for db in config["train"]["dbs"]:
+                train_basename_texts.append(f"{str(i + 1).zfill(4)}_{noisy_type}_{db}")
+
+    train_store = {}
+    for clean_wav_path, noisy_wav_path in zip(paths_of_test_clean_wav, paths_of_test_noisy_wav):
+        basename_text, _ = get_name_and_ext(clean_wav_path)
+        if basename_text in train_basename_texts:
             shutil.copy(clean_wav_path, clean_wav_path.replace("test", "train"))
             shutil.copy(noisy_wav_path, noisy_wav_path.replace("test", "train"))
 
+            train_store[basename_text] = test_store[basename_text]
+
+    print("Select train dataset finshed. Begin saving numpy object file...")
+    np.save((release_dir / "train.npy").as_posix(), train_store)
+    np.save((release_dir / "test.npy").as_posix(), test_store)
+    print(f"Build SE dataset finished, result In {release_dir}.")
+    print("You can use command line to transfer release data to remote dir: ")
+    print('\t time tar -c <local_release_dir> | pv | lz4 -B4 | ssh user@ip "lz4 -d | tar -xC <remote_dir>"')
+
 
 if __name__ == "__main__":
-    release_data()
+    config = json.load(open("./config.json"))
+    main(config)
