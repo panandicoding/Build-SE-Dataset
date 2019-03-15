@@ -16,9 +16,9 @@ git clone https://github.com/haoxiangsnr/Build-SE-Dataset.git
 cd Build-SE-Dataset
 ```
 
-Download TIMIT Corpus from https://github.com/philipperemy/timit
+Download TIMIT Corpus from https://github.com/philipperemy/timit.
 
-Extract it and put it in the `./data/TIMIT directory`:
+Extract it and put it in the `./data/TIMIT` directory:
 
 ```shell
 data
@@ -61,7 +61,7 @@ Configuring `./config.json`:
 ```
 
 
-Build dataset:
+Build speech enhancement dataset:
 
 ```shell
 
@@ -76,5 +76,18 @@ Select train dataset finshed. Begin saving numpy object file...
 Build SE dataset finished, result In release_timit.
 You can use command line to transfer release data to remote dir: 
          time tar -c <local_release_dir> | pv | lz4 -B4 | ssh user@ip "lz4 -d | tar -xC <remote_dir>"
+```
 
+The dataset is as follows:
+
+```shell
+release_timit/
+├── test
+│   ├── clean # 0001_factoryfloor1_-5.wav, ...
+│   └── noisy # 0001_factoryfloor1_-5.wav, ...
+├── test.npy # {"0001_factoryfloor1_-5": {"noisy": noisy_y, "clean": clean_y}, ...}
+├── train
+│   ├── clean # 0001_factoryfloor1_-5.wav, ...
+│   └── noisy # 0001_factoryfloor1_-5.wav, ...
+└── train.npy # {"0001_factoryfloor1_-5": {"noisy": noisy_y, "clean": clean_y}, ...}
 ```
