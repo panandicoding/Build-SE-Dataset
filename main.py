@@ -33,6 +33,7 @@ def load_wavs(file_paths, limit=None, sr=16000, minimum_sampling=0):
     if not limit:
         limit = len(file_paths)
 
+    print("Loading wavs ...")
     while i < limit:
         wav, _ = librosa.load(file_paths[0], sr=sr)
         if len(wav) >= minimum_sampling:
@@ -122,19 +123,16 @@ def main(config):
     ])
 
     # Classification of TIMIT for train and test
-    noisex92_wav_paths_list = [p for p in glob.glob(noisex92_data_dir.as_posix() + "/*.wav")]
     timit_wav_paths = librosa.util.find_files(timit_data_dir.as_posix(), ext=["WAV"], recurse=True)
     random.shuffle(timit_wav_paths)  # select wav file randomly
-
-    test_noise_paths = [p for p in noisex92_wav_paths_list if get_name_and_ext(p)[0] in config["test"]["noise_types"]]
-    test_clean_wav_paths = timit_wav_paths[:config["test"]["num_of_utterance"]]
-
     clean_ys = load_wavs(
-        test_clean_wav_paths,
+        timit_wav_paths,
         limit=config["test"]["num_of_utterance"],
         minimum_sampling=config["minimum_sampling"]
     )
 
+    noisex92_wav_paths_list = [p for p in glob.glob(noisex92_data_dir.as_posix() + "/*.wav")]
+    test_noise_paths = [p for p in noisex92_wav_paths_list if get_name_and_ext(p)[0] in config["test"]["noise_types"]]
     noise_ys_dict = load_noises(test_noise_paths)
 
     test_store = add_noise_for_wavs(  # Build test dataset
