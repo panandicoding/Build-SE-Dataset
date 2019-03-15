@@ -2,7 +2,7 @@
 
 Build speech enhancement dataset using TIMIT and NoiseX92 corpus.
 
-## Dependency package
+## Dependencies 
 
 - tqdm
 - librosa
@@ -18,11 +18,11 @@ cd Build-SE-Dataset
 
 Download TIMIT Corpus from https://github.com/philipperemy/timit.
 
-Extract it, Put it in the `./data/TIMIT` directory:
+Put it in the `./data/TIMIT` directory, extract it:
 
 ```shell
 sudo apt install unzip
-unzip data/TIMIT/TIMIT.zip
+unzip data/TIMIT/TIMIT.zip -d data/TIMIT
 ```
 
 The directory structure is as follows：
@@ -46,10 +46,16 @@ data
 │   ├── volvo.wav
 │   └── whitenoise.wav
 └── TIMIT
-    ├── TIMIT
+    └── data
+        └── lisa
+            └── data
+                └── timit
 ```
 
-Configuring `./config.json`:
+Configuring `./config.json`
+
+- If the same `release_dir` is specified, `release_dir` will be cleared first and then generated again in `release_dir`
+- The `dbs` and `noise_types` in the training set must be a subset of the test set `dbs`, `noise_types`
 
 ```json
 {

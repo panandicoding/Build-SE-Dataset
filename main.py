@@ -105,6 +105,7 @@ def main(config):
     # Classification of TIMIT for train and test
     noisex92_wav_paths_list = [p for p in glob.glob(noisex92_data_dir.as_posix() + "/*.wav")]
     timit_wav_paths = librosa.util.find_files(timit_data_dir.as_posix(), ext=["WAV"], recurse=True)
+    assert len(timit_wav_paths) > 0, "No TIMIT corpus in ./data/TIMIT, please download TIMIT corpus from https://github.com/philipperemy/timit"
     random.shuffle(timit_wav_paths)  # select wav file randomly
 
     test_clean_wav_paths = timit_wav_paths[:config["test"]["num_of_utterance"]]

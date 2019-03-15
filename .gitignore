@@ -1,6 +1,5 @@
-data/TIMIT/TRAIN
-data/TIMIT/TEST
-
+data/TIMIT
+!data/TIMIT/.gitkeep
 release*/
 
 # Byte-compiled / optimized / DLL files
