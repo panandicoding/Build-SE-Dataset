@@ -35,6 +35,7 @@ def load_wavs(file_paths, limit=None, sr=16000, minimum_sampling=0):
 
     print("Loading wavs ...")
     while i < limit:
+        print(f"Wav index: {i}")
         wav, _ = librosa.load(file_paths[i], sr=sr)
         if len(wav) >= minimum_sampling:
             wavs.append(wav)

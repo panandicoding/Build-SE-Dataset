@@ -1,14 +1,15 @@
 {
-    "release_dir": "release_timit",
+    "release_dir": "../release_0_-5_-10_-15_800_900",
     "minimum_sampling": 16384,
     "train": {
-        "num_of_utterance": 2,
-        "dbs": [0, -5, -10, -20],
+        "num_of_utterance": 800,
+        "dbs": [0, -5, -10, -15],
         "noise_types": ["babble", "destroyerengine", "destroyerops", "factoryfloor1"]
-    },
+     },
     "test": {
-        "num_of_utterance": 6,
+        "num_of_utterance": 900,
         "dbs": [-20, -17, -15, -12, -10, -7, -5, 3, 0, 5, -3],
         "noise_types": ["babble", "destroyerengine", "destroyerops", "factoryfloor1", "factoryfloor2"]
-    }
+     }
 }
+
