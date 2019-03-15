@@ -30,21 +30,21 @@ The directory structure is as follows：
 ```shell
 data
 ├── NoiseX92
-│   ├── babble.wav
-│   ├── buccaneercockpit1.wav
-│   ├── buccaneercockpit2.wav
-│   ├── destroyerengine.wav
-│   ├── destroyerops.wav
-│   ├── f16.wav
-│   ├── factoryfloor1.wav
-│   ├── factoryfloor2.wav
-│   ├── hfchannel.wav
-│   ├── leopard.wav
-│   ├── m109.wav
-│   ├── machinegun.wav
-│   ├── pinknoise.wav
-│   ├── volvo.wav
-│   └── whitenoise.wav
+│   ├── babble.wav
+│   ├── buccaneercockpit1.wav
+│   ├── buccaneercockpit2.wav
+│   ├── destroyerengine.wav
+│   ├── destroyerops.wav
+│   ├── f16.wav
+│   ├── factoryfloor1.wav
+│   ├── factoryfloor2.wav
+│   ├── hfchannel.wav
+│   ├── leopard.wav
+│   ├── m109.wav
+│   ├── machinegun.wav
+│   ├── pinknoise.wav
+│   ├── volvo.wav
+│   └── whitenoise.wav
 └── TIMIT
     └── data
         └── lisa
@@ -56,10 +56,12 @@ Configuring `./config.json`
 
 - If the same `release_dir` is specified, `release_dir` will be cleared first and then generated again in `release_dir`
 - The `dbs` and `noise_types` in the training set must be a subset of the test set `dbs`, `noise_types`
+- Use `minimum_sampling` to specify the minimum number of samples, and the TIMIT corpus that meets the requirements will be used (Default sr = 16000).
 
 ```json
 {
     "release_dir": "release_timit",
+    "minimum_sampling": 16384,
     "train": {
         "num_of_utterance": 2,
         "dbs": [0, -5, -10, -20],
@@ -96,11 +98,11 @@ The dataset is as follows:
 ```shell
 release_timit/
 ├── test
-│   ├── clean # 0001_factoryfloor1_-5.wav, ...
-│   └── noisy # 0001_factoryfloor1_-5.wav, ...
+│   ├── clean # 0001_factoryfloor1_-5.wav, ...
+│   └── noisy # 0001_factoryfloor1_-5.wav, ...
 ├── test.npy # {"0001_factoryfloor1_-5": {"noisy": noisy_y, "clean": clean_y}, ...}
 ├── train
-│   ├── clean # 0001_factoryfloor1_-5.wav, ...
-│   └── noisy # 0001_factoryfloor1_-5.wav, ...
+│   ├── clean # 0001_factoryfloor1_-5.wav, ...
+│   └── noisy # 0001_factoryfloor1_-5.wav, ...
 └── train.npy # {"0001_factoryfloor1_-5": {"noisy": noisy_y, "clean": clean_y}, ...}
 ```

@@ -12,11 +12,33 @@ from tqdm import tqdm
 from utils import get_name_and_ext, add_noise_for_waveform, prepare_empty_dirs
 
 
-def load_wavs(file_paths, sr=16000):
+def load_wavs(file_paths, limit=None, sr=16000, minimum_sampling=0):
+    """根据文件路径的 list 逐个加载 wav 文件
+
+    可以指定：
+    - wav 文件需要满足的最小采样点数
+    - 需要加载的 wav 文件数量，直到遍历完整个 list 或 满足了 limit 指定的数量要求
+
+    Args:
+        file_paths: 候选集合，其中采样点数大于 minimum_sampling 的 wav 才能被加载成功
+        limit: 要求加载的数量上限
+        sr: 采样率
+        minimum_sampling: 最小采样点数
+
+    """
+
     wavs = []
-    for fp in tqdm(file_paths, desc="Loading wavs: "):
-        wav, _ = librosa.load(fp, sr=sr)
-        wavs.append(wav)
+    i = 0
+
+    if not limit:
+        limit = len(file_paths)
+
+    while i < limit:
+        wav, _ = librosa.load(file_paths[0], sr=sr)
+        if len(wav) >= minimum_sampling:
+            wavs.append(wav)
+            i += 1
+
     return wavs
 
 
@@ -37,15 +59,15 @@ def load_noises(noise_wav_paths):
 
     return out
 
-def add_noise_for_wavs(noise_paths, clean_wav_paths, dbs, output_dir):
+def add_noise_for_wavs(noise_ys_dict:dict, clean_ys, dbs, output_dir):
     """批量合成带噪语音
 
     将 noise_paths 中的噪声文件，按照各种 dbs，分别叠加在 clean_wav_paths 上
     最终的结果保存至 output_dir/noisy, output_dir/clean
 
     Args:
-        noise_paths(list): 噪声文件路径
-        clean_wav_paths(list): 纯净语音文件路径
+        noise_ys_dict(list): 噪声文件路径
+        clean_ys(list): 纯净语音文件路径
         dbs(list): 信噪比
         output_dir(Path): 输出的目录，目录必须存在
 
@@ -60,9 +82,6 @@ def add_noise_for_wavs(noise_paths, clean_wav_paths, dbs, output_dir):
     """
     assert (output_dir / "clean").exists()
     assert (output_dir / "noisy").exists()
-
-    noise_ys_dict = load_noises(noise_paths)
-    clean_ys = load_wavs(clean_wav_paths)
 
     store = {}
 
@@ -105,14 +124,22 @@ def main(config):
     # Classification of TIMIT for train and test
     noisex92_wav_paths_list = [p for p in glob.glob(noisex92_data_dir.as_posix() + "/*.wav")]
     timit_wav_paths = librosa.util.find_files(timit_data_dir.as_posix(), ext=["WAV"], recurse=True)
-    assert len(timit_wav_paths) > 0, "No TIMIT corpus in ./data/TIMIT, please download TIMIT corpus from https://github.com/philipperemy/timit"
     random.shuffle(timit_wav_paths)  # select wav file randomly
 
-    test_clean_wav_paths = timit_wav_paths[:config["test"]["num_of_utterance"]]
     test_noise_paths = [p for p in noisex92_wav_paths_list if get_name_and_ext(p)[0] in config["test"]["noise_types"]]
+    test_clean_wav_paths = timit_wav_paths[:config["test"]["num_of_utterance"]]
+
+    clean_ys = load_wavs(
+        test_clean_wav_paths,
+        limit=config["test"]["num_of_utterance"],
+        minimum_sampling=config["minimum_sampling"]
+    )
+
+    noise_ys_dict = load_noises(test_noise_paths)
+
     test_store = add_noise_for_wavs(  # Build test dataset
-        noise_paths=test_noise_paths,
-        clean_wav_paths=test_clean_wav_paths,
+        noise_ys_dict=noise_ys_dict,
+        clean_ys=clean_ys,
         dbs=config["test"]["dbs"],
         output_dir=release_dir_for_test
     )
