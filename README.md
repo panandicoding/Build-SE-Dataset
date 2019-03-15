@@ -9,16 +9,23 @@ Build speech enhancement dataset using TIMIT and NoiseX92 corpus.
 
 ## Usage
 
-Clone Repository:
+Clone repository, the repository contains most of the NoiseX-92 corpus and needs patience:
 
 ```shell
-git clone https://github.com/haoxiangsnr/Build-SE-Dataset.git
+git clone https://github.com/haoxiangsnr/Build-SE-Dataset.git 
 cd Build-SE-Dataset
 ```
 
 Download TIMIT Corpus from https://github.com/philipperemy/timit.
 
-Extract it and put it in the `./data/TIMIT` directory:
+Extract it, Put it in the `./data/TIMIT` directory:
+
+```shell
+sudo apt install unzip
+unzip data/TIMIT/TIMIT.zip
+```
+
+The directory structure is as follows：
 
 ```shell
 data
