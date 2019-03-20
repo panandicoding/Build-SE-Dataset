@@ -1,6 +1,6 @@
 # Build Speech Enhancement Dataset
 
-Build speech enhancement dataset using TIMIT and NoiseX92 corpus.
+Build speech enhancement dataset using TIMIT and NoiseX92 corpus. The current project has very limited functions, please feel free to pull
 
 ## Dependencies 
 
